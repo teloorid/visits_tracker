@@ -44,8 +44,8 @@ This application follows a clean architecture approach, dividing the codebase in
     * Handles data serialization/deserialization between API responses and domain entities using `Model` classes.
     * Maps network exceptions to domain `Failure` types.
 
-![Application Architecture.png](../../../OneDrive/Desktop/Debi/Professional/Solutech%20Consultancy/Application%20Architecture.png)
-* Architecture Diagram *
+![Application Architecture.png](assets/markdown/Application%20Architecture.png)![Application Architecture.png](../../../OneDrive/Desktop/Debi/Professional/Solutech%20Consultancy/Application%20Architecture.png)
+*Architecture Diagram*
 
 **Why this architecture?**
 -   **Separation of Concerns:** Each layer has a specific responsibility, leading to a more organized and understandable codebase.
