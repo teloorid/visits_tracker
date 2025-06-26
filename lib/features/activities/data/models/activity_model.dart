@@ -2,14 +2,10 @@ import '../../domain/entities/activity.dart';
 
 class ActivityModel extends Activity {
   const ActivityModel({
-    required int id,
-    required String description,
-    required DateTime createdAt,
-  }) : super(
-    id: id,
-    description: description,
-    createdAt: createdAt,
-  );
+    required super.id,
+    required super.description,
+    required super.createdAt,
+  });
 
   factory ActivityModel.fromJson(Map<String, dynamic> json) {
     return ActivityModel(

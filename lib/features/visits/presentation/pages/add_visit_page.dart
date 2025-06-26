@@ -172,7 +172,7 @@ class _AddVisitPageState extends State<AddVisitPage> {
                           });
                         },
                       );
-                    }).toList(),
+                    }),
                     const SizedBox(height: 24.0),
                     Center(
                       child: ElevatedButton(

@@ -2,24 +2,15 @@ import '../../domain/entities/visit.dart';
 
 class VisitModel extends Visit {
   const VisitModel({
-    required int id,
-    required int customerId,
-    required DateTime visitDate,
-    required String status,
-    required String location,
-    required String notes,
-    required List<int> activitiesDoneIds, // Still IDs here
-    required DateTime createdAt,
-  }) : super(
-    id: id,
-    customerId: customerId,
-    visitDate: visitDate,
-    status: status,
-    location: location,
-    notes: notes,
-    activitiesDoneIds: activitiesDoneIds,
-    createdAt: createdAt,
-  );
+    required super.id,
+    required super.customerId,
+    required super.visitDate,
+    required super.status,
+    required super.location,
+    required super.notes,
+    required super.activitiesDoneIds, // Still IDs here
+    required super.createdAt,
+  });
 
   factory VisitModel.fromJson(Map<String, dynamic> json) {
     return VisitModel(
@@ -37,6 +28,7 @@ class VisitModel extends Visit {
 
   Map<String, dynamic> toJson() {
     return {
+      'id': id,
       'customer_id': customerId,
       'visit_date': visitDate.toIso8601String(),
       'status': status,
@@ -44,6 +36,20 @@ class VisitModel extends Visit {
       'notes': notes,
       'activities_done': activitiesDoneIds.map((e) => e.toString()).toList(), // Convert to list of strings for API
     };
+  }
+
+  // Factory method to convert a domain Entity to a data Model
+  factory VisitModel.fromEntity(Visit visit) {
+    return VisitModel(
+      id: visit.id,
+      customerId: visit.customerId,
+      visitDate: visit.visitDate,
+      status: visit.status,
+      location: visit.location,
+      notes: visit.notes,
+      activitiesDoneIds: visit.activitiesDoneIds,
+      createdAt: visit.createdAt,
+    );
   }
 
   // Helper for adding new visits (without ID and createdAt)

@@ -138,11 +138,11 @@ class VisitCubit extends Cubit<VisitState> {
 
   String _mapFailureToMessage(Failure failure) {
     switch (failure.runtimeType) {
-      case ServerFailure:
+      case ServerFailure _:
         return (failure as ServerFailure).message;
-      case CacheFailure:
+      case CacheFailure _:
         return (failure as CacheFailure).message;
-      case NetworkFailure:
+      case NetworkFailure _:
         return (failure as NetworkFailure).message;
       default:
         return 'Unexpected error';

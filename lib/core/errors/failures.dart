@@ -25,15 +25,20 @@ class NetworkFailure extends Failure {
   NetworkFailure({this.message = 'Please check your internet connection.'}) : super([message]);
 }
 
+class UnexpectedFailure extends Failure {
+  final String message;
+  UnexpectedFailure({this.message = 'An unexpected server error occurred.'}) : super([message]);
+}
+
 // Specific API failures
 class NotFoundFailure extends ServerFailure {
-  NotFoundFailure({String message = 'Resource not found.'}) : super(message: message);
+  NotFoundFailure({super.message = 'Resource not found.'});
 }
 
 class UnauthorizedFailure extends ServerFailure {
-  UnauthorizedFailure({String message = 'Unauthorized access.'}) : super(message: message);
+  UnauthorizedFailure({super.message = 'Unauthorized access.'});
 }
 
 class InvalidInputFailure extends ServerFailure {
-  InvalidInputFailure({String message = 'Invalid input provided.'}) : super(message: message);
+  InvalidInputFailure({super.message = 'Invalid input provided.'});
 }

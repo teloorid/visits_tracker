@@ -2,14 +2,10 @@ import '../../domain/entities/customer.dart';
 
 class CustomerModel extends Customer {
   const CustomerModel({
-    required int id,
-    required String name,
-    required DateTime createdAt,
-  }) : super(
-    id: id,
-    name: name,
-    createdAt: createdAt,
-  );
+    required super.id,
+    required super.name,
+    required super.createdAt,
+  });
 
   factory CustomerModel.fromJson(Map<String, dynamic> json) {
     return CustomerModel(
