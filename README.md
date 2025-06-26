@@ -44,7 +44,8 @@ This application follows a clean architecture approach, dividing the codebase in
     * Handles data serialization/deserialization between API responses and domain entities using `Model` classes.
     * Maps network exceptions to domain `Failure` types.
 
-**Diagram:**
+![Application Architecture.png](../../../OneDrive/Desktop/Debi/Professional/Solutech%20Consultancy/Application%20Architecture.png)
+* Architecture Diagram *
 
 **Why this architecture?**
 -   **Separation of Concerns:** Each layer has a specific responsibility, leading to a more organized and understandable codebase.
@@ -60,8 +61,8 @@ This application follows a clean architecture approach, dividing the codebase in
 
 1.  **Clone the repository:**
     ```bash
-    git clone [https://github.com/your-username/visits_tracker_app.git](https://github.com/your-username/visits_tracker_app.git)
-    cd visits_tracker_app
+    git clone https://github.com/teloorid/visits_tracker.git
+    cd visits_tracker
     ```
 2.  **Install Flutter dependencies:**
     ```bash
