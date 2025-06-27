@@ -24,7 +24,7 @@ class VisitDetailPage extends StatelessWidget {
                     (c) => c.id == visit.customerId,
                 orElse: () => throw Exception('Customer not found'));
             final activitiesDone = visit.activitiesDoneIds
-                .map((id) => state.activities
+                ?.map((id) => state.activities
                 .firstWhere((a) => a.id == id,
                 orElse: () => Activity(
                     id: -1,
@@ -47,8 +47,8 @@ class VisitDetailPage extends StatelessWidget {
                       _buildDetailRow('Status:', visit.status),
                       _buildDetailRow('Location:', visit.location),
                       _buildDetailRow('Notes:', visit.notes),
-                      _buildDetailRow('Activities Done:', activitiesDone.join(', ')),
-                      _buildDetailRow('Created At:', DateFormat('yyyy-MM-dd HH:mm').format(visit.createdAt)),
+                      _buildDetailRow('Activities Done:', activitiesDone!.join(', ')),
+                      _buildDetailRow('Created At:', DateFormat('yyyy-MM-dd HH:mm').format(visit.createdAt!)),
                     ],
                   ),
                 ),

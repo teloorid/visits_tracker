@@ -2,7 +2,9 @@ import 'package:get_it/get_it.dart';
 import 'package:dio/dio.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:flutter/widgets.dart'; // Ensure this is imported for WidgetsFlutterBinding.ensureInitialized()
+import 'package:flutter/widgets.dart';
+import 'package:connectivity_plus/connectivity_plus.dart';
+import 'package:flutter/foundation.dart';
 
 // Visit Feature Imports
 import '../features/visits/data/datasources/visit_remote_data_source.dart';
@@ -29,43 +31,72 @@ import '../features/activities/domain/usecases/get_all_activities.dart';
 
 // Core Imports
 import '../core/constants/api_constants.dart';
+import '../core/network/network_info.dart';
 
-final sl = GetIt.instance; // sl stands for Service Locator
+final sl = GetIt.instance;
 
 Future<void> init() async {
-  //! Core
-  // WidgetsFlutterBinding.ensureInitialized() should be in main.dart, but harmless here if also present there.
-  WidgetsFlutterBinding.ensureInitialized();
+  try {
+    //! Core
+    WidgetsFlutterBinding.ensureInitialized();
 
+    // External dependencies
+    await _initExternalDependencies();
+
+    // Core services
+    _initCoreServices();
+
+    // Data sources
+    await _initDataSources();
+
+    // Repositories
+    _initRepositories();
+
+    // Use cases
+    _initUseCases();
+
+    // Cubits/Blocs
+    _initCubits();
+
+    print('✅ Dependency injection initialization completed');
+  } catch (e) {
+    print('❌ Error initializing dependencies: $e');
+    rethrow;
+  }
+}
+
+Future<void> _initExternalDependencies() async {
+  // SharedPreferences
   final sharedPreferences = await SharedPreferences.getInstance();
   sl.registerLazySingleton(() => sharedPreferences);
 
+  // Initialize Hive
   await Hive.initFlutter();
 
-  // IMPORTANT: Register asynchronous dependencies first and then await their readiness
-  // We explicitly await the registration futures to ensure the boxes are open
-  // before anything tries to retrieve them.
-  sl.registerLazySingletonAsync<Box<dynamic>>(
-        () => Hive.openBox('visitsCacheBox'), // This is the Future that needs to complete
+  // Open Hive boxes
+  final visitsCacheBox = await Hive.openBox('visitsCacheBox');
+  final pendingVisitsBox = await Hive.openBox('pendingVisitsBox');
+
+  sl.registerLazySingleton<Box<dynamic>>(
+        () => visitsCacheBox,
     instanceName: 'visitsCacheBox',
   );
-  sl.registerLazySingletonAsync<Box<dynamic>>(
-        () => Hive.openBox('pendingVisitsBox'),
+  sl.registerLazySingleton<Box<dynamic>>(
+        () => pendingVisitsBox,
     instanceName: 'pendingVisitsBox',
   );
 
-  // Await the completion of all async registrations before registering anything that depends on them.
-  // This tells GetIt to wait until all currently registered async factories/singletons are ready.
-  await sl.allReady();
+  // Connectivity
+  sl.registerLazySingleton(() => Connectivity());
+}
 
-  sl.registerLazySingleton<VisitLocalDataSource>(
-        () => VisitLocalDataSourceImpl(
-      visitsBox: sl<Box<dynamic>>(instanceName: 'visitsCacheBox'), // Now safe to retrieve
-      pendingVisitsBox: sl<Box<dynamic>>(instanceName: 'pendingVisitsBox'), // Now safe to retrieve
-    ),
+void _initCoreServices() {
+  // Network Info
+  sl.registerLazySingleton<NetworkInfo>(
+        () => NetworkInfoImpl(sl()),
   );
 
-  // Dio Client (This can be registered before or after asyncs if it doesn't depend on them)
+  // Dio Client with interceptors
   sl.registerLazySingleton<Dio>(() {
     final dio = Dio(BaseOptions(
       baseUrl: ApiConstants.baseUrl,
@@ -73,14 +104,93 @@ Future<void> init() async {
         'apikey': ApiConstants.apiKey,
         'Content-Type': 'application/json',
       },
+      connectTimeout: const Duration(seconds: 30),
+      receiveTimeout: const Duration(seconds: 30),
+      sendTimeout: const Duration(seconds: 30),
     ));
+
+    // Add logging interceptor in debug mode
+    if (kDebugMode) {
+      dio.interceptors.add(LogInterceptor(
+        requestBody: true,
+        responseBody: true,
+        requestHeader: true,
+        responseHeader: false,
+        error: true,
+      ));
+    }
+
+    // Add retry interceptor
+    dio.interceptors.add(RetryInterceptor(
+      dio: dio,
+      retries: 3,
+      retryDelays: const [
+        Duration(seconds: 1),
+        Duration(seconds: 2),
+        Duration(seconds: 3),
+      ],
+    ));
+
     return dio;
   });
+}
 
-  //! Features - Visits
-  // Cubit
-  // Registering Cubit as factory means it's created on demand.
-  // Ensure all its dependencies (like UseCases) are registered before it's created.
+Future<void> _initDataSources() async {
+  // Local data sources
+  sl.registerLazySingleton<VisitLocalDataSource>(
+        () => VisitLocalDataSourceImpl(
+      visitsBox: sl<Box<dynamic>>(instanceName: 'visitsCacheBox'),
+      pendingVisitsBox: sl<Box<dynamic>>(instanceName: 'pendingVisitsBox'),
+    ),
+  );
+
+  // Remote data sources
+  sl.registerLazySingleton<VisitRemoteDataSource>(
+        () => VisitRemoteDataSourceImpl(client: sl()),
+  );
+
+  sl.registerLazySingleton<CustomerRemoteDataSource>(
+        () => CustomerRemoteDataSourceImpl(client: sl()),
+  );
+
+  sl.registerLazySingleton<ActivityRemoteDataSource>(
+        () => ActivityRemoteDataSourceImpl(client: sl()),
+  );
+}
+
+void _initRepositories() {
+  sl.registerLazySingleton<VisitRepository>(
+        () => VisitRepositoryImpl(
+      remoteDataSource: sl(),
+      localDataSource: sl(),
+      networkInfo: sl(),
+    ),
+  );
+
+  sl.registerLazySingleton<CustomerRepository>(
+        () => CustomerRepositoryImpl(
+      remoteDataSource: sl(),
+      networkInfo: sl(),
+    ),
+  );
+
+  sl.registerLazySingleton<ActivityRepository>(
+        () => ActivityRepositoryImpl(
+      remoteDataSource: sl(),
+      networkInfo: sl(),
+    ),
+  );
+}
+
+void _initUseCases() {
+  sl.registerLazySingleton(() => AddVisit(sl()));
+  sl.registerLazySingleton(() => GetAllVisits(sl()));
+  sl.registerLazySingleton(() => GetVisitStats());
+  sl.registerLazySingleton(() => GetAllCustomers(sl()));
+  sl.registerLazySingleton(() => GetAllActivities(sl()));
+}
+
+void _initCubits() {
   sl.registerFactory(
         () => VisitCubit(
       addVisit: sl(),
@@ -90,40 +200,56 @@ Future<void> init() async {
       getAllActivities: sl(),
     ),
   );
+}
 
-  // Use cases
-  sl.registerLazySingleton(() => AddVisit(sl()));
-  sl.registerLazySingleton(() => GetAllVisits(sl()));
-  sl.registerLazySingleton(() => GetVisitStats());
+// Cleanup method
+Future<void> dispose() async {
+  await sl.reset();
+  await Hive.close();
+}
 
-  // Repository
-  sl.registerLazySingleton<VisitRepository>(
-        () => VisitRepositoryImpl(
-      remoteDataSource: sl(),
-      localDataSource: sl(), // localDataSource depends on Hive Boxes
-    ),
-  );
+// Helper classes
+class RetryInterceptor extends Interceptor {
+  final Dio dio;
+  final int retries;
+  final List<Duration> retryDelays;
 
-  // Data sources
-  sl.registerLazySingleton<VisitRemoteDataSource>(
-        () => VisitRemoteDataSourceImpl(client: sl()),
-  );
+  RetryInterceptor({
+    required this.dio,
+    required this.retries,
+    required this.retryDelays,
+  });
 
-  //! Features - Customers
-  sl.registerLazySingleton(() => GetAllCustomers(sl()));
-  sl.registerLazySingleton<CustomerRepository>(
-        () => CustomerRepositoryImpl(remoteDataSource: sl()),
-  );
-  sl.registerLazySingleton<CustomerRemoteDataSource>(
-        () => CustomerRemoteDataSourceImpl(client: sl()),
-  );
+  @override
+  void onError(DioException err, ErrorInterceptorHandler handler) async {
+    final extra = err.requestOptions.extra;
+    final retryCount = extra['retryCount'] ?? 0;
 
-  //! Features - Activities
-  sl.registerLazySingleton(() => GetAllActivities(sl()));
-  sl.registerLazySingleton<ActivityRepository>(
-        () => ActivityRepositoryImpl(remoteDataSource: sl()),
-  );
-  sl.registerLazySingleton<ActivityRemoteDataSource>(
-        () => ActivityRemoteDataSourceImpl(client: sl()),
-  );
+    if (retryCount < retries && _shouldRetry(err)) {
+      extra['retryCount'] = retryCount + 1;
+
+      final delay = retryDelays.length > retryCount
+          ? retryDelays[retryCount]
+          : retryDelays.last;
+
+      await Future.delayed(delay);
+
+      try {
+        final response = await dio.fetch(err.requestOptions);
+        handler.resolve(response);
+      } catch (e) {
+        handler.next(err);
+      }
+    } else {
+      handler.next(err);
+    }
+  }
+
+  bool _shouldRetry(DioException err) {
+    return err.type == DioExceptionType.connectionTimeout ||
+        err.type == DioExceptionType.receiveTimeout ||
+        err.type == DioExceptionType.sendTimeout ||
+        (err.response?.statusCode != null &&
+            err.response!.statusCode! >= 500);
+  }
 }

@@ -46,8 +46,8 @@ class VisitLocalDataSourceImpl implements VisitLocalDataSource {
   @override
   Future<void> addPendingVisit(VisitModel visit) async {
     try {
-      // Small serialization is likely fine on main thread
-      await pendingVisitsBox.add(visit.toJson());
+      // Use the visit ID as the key for easier removal later
+      await pendingVisitsBox.put(visit.id.toString(), visit.toJson());
     } catch (e) {
       throw CacheException(message: 'Failed to save pending visit: $e');
     }
@@ -61,6 +61,16 @@ class VisitLocalDataSourceImpl implements VisitLocalDataSource {
       return compute(parseVisitsList, jsonList);
     } catch (e) {
       throw CacheException(message: 'Failed to get pending visits: $e');
+    }
+  }
+
+  @override
+  Future<void> removePendingVisit(VisitModel visit) async {
+    try {
+      // Remove the pending visit using its ID as the key
+      await pendingVisitsBox.delete(visit.id.toString());
+    } catch (e) {
+      throw CacheException(message: 'Failed to remove pending visit: $e');
     }
   }
 

@@ -19,7 +19,9 @@ class _VisitsListPageState extends State<VisitsListPage> {
   @override
   void initState() {
     super.initState();
-    context.read<VisitCubit>().loadVisitsAndDependencies();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      context.read<VisitCubit>().loadVisitsAndDependencies();
+    });
   }
 
   @override
@@ -125,13 +127,13 @@ class _VisitsListPageState extends State<VisitsListPage> {
                       final visit = state.filteredVisits[index];
                       final customer = customersMap[visit.customerId];
                       final activitiesDone = visit.activitiesDoneIds
-                          .map((id) => activitiesMap[id]?.description ?? 'Unknown Activity')
+                          ?.map((id) => activitiesMap[id]?.description ?? 'Unknown Activity')
                           .toList();
 
                       return VisitCard(
                         visit: visit,
                         customerName: customer?.name ?? 'Unknown Customer',
-                        activitiesDone: activitiesDone,
+                        activitiesDone: activitiesDone!,
                         onTap: () {
                           // Navigate to visit detail page
                           context.go('/visit_detail/${visit.id}');

@@ -21,3 +21,8 @@ class NetworkException implements Exception {
   @override
   String toString() => 'NetworkException: $message';
 }
+
+class DataParsingException implements Exception {
+  final String message;
+  DataParsingException({required this.message});
+}

@@ -1,5 +1,3 @@
-// lib/features/visits/data/datasources/visit_local_data_source.dart
-
 import '../models/visit_model.dart';
 import '../../../../core/errors/exceptions.dart';
 
@@ -16,6 +14,9 @@ abstract class VisitLocalDataSource {
 
   /// Retrieves a list of visits that are pending synchronization.
   Future<List<VisitModel>> getPendingVisits();
+
+  /// Removes a specific pending visit after successful synchronization.
+  Future<void> removePendingVisit(VisitModel visit);
 
   /// Clears all pending visits after successful synchronization.
   Future<void> clearPendingVisits();
