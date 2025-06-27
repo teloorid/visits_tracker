@@ -131,9 +131,9 @@ class VisitCubit extends Cubit<VisitState> {
     required String notes,
     required List<int> activitiesDoneIds,
   }) async {
-    if (state is! VisitLoaded) return;
-
-    final currentState = state as VisitLoaded;
+    // if (state is! VisitLoaded) return;
+    //
+    // final currentState = state as VisitLoaded;
     emit(VisitLoading());
 
     try {
@@ -146,23 +146,23 @@ class VisitCubit extends Cubit<VisitState> {
         activitiesDoneIds: activitiesDoneIds,
       ));
 
-      result.fold(
-            (failure) => emit(VisitError(message: _mapFailureToMessage(failure))),
+      await result.fold(
+            (failure) {
+          emit(VisitError(message: _mapFailureToMessage(failure)));
+        },
             (newVisit) async {
-          final updatedVisits = [...currentState.visits, newVisit];
-          final statsResult = await getVisitStats(updatedVisits);
-
-          statsResult.fold(
-                (failure) => emit(VisitError(message: _mapFailureToMessage(failure))),
-                (stats) => emit(currentState.copyWith(
-              visits: updatedVisits,
-              stats: stats,
-              filteredVisits: updatedVisits,
-            )),
-          );
+          // VISIT ADDED SUCCESSFULLY! Now, re-load all data to get the new visit
+          // with its server-assigned ID and ensure all stats are updated.
+          await loadVisitsAndDependencies(); // <-- CRITICAL CHANGE HERE
+          // If loadVisitsAndDependencies fails, it will emit VisitError.
+          // If it succeeds, it will emit VisitLoaded.
         },
       );
-    } catch (e) {
+    } catch (e, stackTrace) {
+      print('*** VisitCubit addNewVisit Catch Error ***');
+      print('Error Type: ${e.runtimeType}');
+      print('Error Message: $e');
+      print('Stack Trace: $stackTrace');
       emit(VisitError(message: 'Failed to add visit: ${e.toString()}'));
     }
   }
@@ -210,12 +210,21 @@ class VisitCubit extends Cubit<VisitState> {
   }
 
   String _mapFailureToMessage(Failure failure) {
-    return switch (failure.runtimeType) {
-      ServerFailure _ => (failure as ServerFailure).message,
-      CacheFailure _ => (failure as CacheFailure).message,
-      NetworkFailure _ => (failure as NetworkFailure).message,
-      _ => 'Unexpected error occurred',
-    };
+    // Add a print statement here to see the actual failure type and message
+    print('*** VisitCubit Failure Mapping ***');
+    print('Failure Type: ${failure.runtimeType}');
+    if (failure is ServerFailure) {
+      print('ServerFailure Message: ${failure.message}');
+      return failure.message; // Return the actual server message
+    } else if (failure is CacheFailure) {
+      print('CacheFailure Message: ${failure.message}');
+      return failure.message; // Return the actual cache message
+    } else if (failure is NetworkFailure) {
+      print('NetworkFailure Message: ${failure.message}');
+      return failure.message; // Return the actual network message
+    }
+    print('Unknown Failure: $failure');
+    return 'Unexpected error occurred';
   }
 
   @override

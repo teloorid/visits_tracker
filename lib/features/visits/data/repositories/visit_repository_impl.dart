@@ -36,10 +36,10 @@ class VisitRepositoryImpl implements VisitRepository {
           final remoteVisits = await remoteDataSource.getAllVisits();
           await localDataSource.cacheVisits(remoteVisits);
           return Right(remoteVisits); // Return fresh data
-        } on ServerException catch (e) {
+        } on ServerException {
           // Remote failed but we have cached data, return cached data
           return Right(localVisits);
-        } on NetworkException catch (e) {
+        } on NetworkException {
           // Network issues but we have cached data, return cached data
           return Right(localVisits);
         } catch (e) {

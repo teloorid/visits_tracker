@@ -84,32 +84,69 @@ class VisitRemoteDataSourceImpl implements VisitRemoteDataSource {
         ApiConstants.visitsEndpoint,
         data: visit.toNewVisitJson(),
         queryParameters: {'select': '*'},
+        options: Options(
+          responseType: ResponseType.json,
+          headers: {
+            'apikey': _supabaseApiKey,
+            'Content-Type': 'application/json',
+          },
+        ),
       );
+
+      // --- ADD THESE PRINT STATEMENTS FOR DEBUGGING ---
+      print('*** Add Visit Response Status Code: ${response.statusCode} ***');
+      print('*** Add Visit Response Data Type: ${response.data.runtimeType} ***');
+      print('*** Add Visit Response Data: ${response.data} ***');
+      // --- END ADDED PRINT STATEMENTS ---
+
       if (response.statusCode == 201) {
-        if (response.data is List && response.data.isNotEmpty) {
-          // Offload parsing of the single item to an Isolate
-          return compute(parseSingleVisit, response.data[0] as Map<String, dynamic>);
+        // We need to be careful with the type of response.data[0] here too,
+        // as it might be _Map<dynamic, dynamic>
+        if (response.data is String && (response.data as String).isEmpty) {
+          print('Warning: Supabase returned 201 but with an empty response body. Assuming success and returning original visit for now.');
+          // Temporarily return the passed-in visit. The cubit will re-fetch all.
+          // This ensures the Future<VisitModel> signature is satisfied.
+          return visit;
         }
-        throw ServerException(message: 'Failed to parse new visit response.');
+
+        if (response.data is List && response.data.isNotEmpty) {
+          final dynamic rawNewVisitData = response.data[0];
+          if (rawNewVisitData is Map) {
+            // Safely convert Map<dynamic, dynamic> to Map<String, dynamic>
+            // before passing to parseSingleVisit (which expects Map<String, dynamic>)
+            final Map<String, dynamic> stringKeyedMap = rawNewVisitData.map(
+                  (key, value) => MapEntry(key.toString(), value),
+            );
+            return compute(parseSingleVisit, stringKeyedMap);
+          } else {
+            throw ServerException(message: 'Response data item is not a map: ${rawNewVisitData.runtimeType}.');
+          }
+        }
+        throw ServerException(message: 'Failed to parse new visit response: Response data is not a valid non-empty list.');
       } else {
-        throw ServerException(message: 'Failed to add visit. Status code: ${response.statusCode}');
+        throw ServerException(message: 'Failed to add visit. Status code: ${response.statusCode}. Response: ${response.data}');
       }
     } on DioException catch (e) {
       if (e.type == DioExceptionType.connectionError || e.type == DioExceptionType.unknown) {
         throw NetworkException(message: 'No internet connection or server unreachable.');
       } else if (e.response != null) {
+        print('Server error response data (Add Visit): ${e.response?.data}'); // Log server error data
         throw ServerException(
           message: e.response?.data['message'] ?? 'Server error: ${e.response?.statusCode}',
         );
       } else {
-        throw ServerException(message: 'An unexpected error occurred: ${e.message}');
+        throw ServerException(message: 'An unexpected Dio error occurred (Add Visit): ${e.message}');
       }
+    } on FormatException catch (e) {
+      print('*** Data Parsing Error (FormatException) in VisitRemoteDataSourceImpl.addVisit ***');
+      print('Error message: ${e.message}');
+      throw DataParsingException(message: 'Failed to parse add visit response data due to malformed JSON: ${e.message}');
     } catch (e, stackTrace) {
-      print('*** An unknown error occurred in addVisit ***');
+      print('*** An unknown error occurred in VisitRemoteDataSourceImpl.addVisit ***');
       print('Error type: ${e.runtimeType}');
       print('Error message: $e');
       print('Stack trace: $stackTrace');
-      throw ServerException(message: 'An unknown error occurred while adding visit: $e');
+      throw ServerException(message: 'An unknown error occurred while adding visit: ${e.toString()}');
     }
   }
 

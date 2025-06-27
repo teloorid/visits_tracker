@@ -133,7 +133,7 @@ class _VisitsListPageState extends State<VisitsListPage> {
                       return VisitCard(
                         visit: visit,
                         customerName: customer?.name ?? 'Unknown Customer',
-                        activitiesDone: activitiesDone!,
+                        activitiesDone: activitiesDone ?? [],
                         onTap: () {
                           // Navigate to visit detail page
                           context.go('/visit_detail/${visit.id}');
